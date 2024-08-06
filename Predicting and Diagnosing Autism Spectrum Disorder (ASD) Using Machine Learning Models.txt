@@ -1,0 +1,666 @@
+#pip freeze > requirements.txt
+
+#Import necessary libraries
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import AdaBoostClassifier, GradientBoostingClassifier, HistGradientBoostingClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.model_selection import GridSearchCV
+from tabulate import tabulate
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import classification_report
+from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.metrics import roc_auc_score, roc_curve
+from sklearn.metrics import precision_recall_curve, average_precision_score
+
+import warnings
+warnings.filterwarnings("ignore")
+
+#Loading the data
+df = pd.read_csv("autism.csv")
+df.head()
+
+df1 = df.drop(df.columns[0], axis = 1)
+df1.head()
+
+df1.shape
+df1.columns
+
+#Data Cleaning
+df1.rename(columns={"A10_Autism_Spectrum_Quotient": "A10"}, inplace=True)
+df1['Ethnicity'] = df1['Ethnicity'].replace('White-European', 'White European')
+df1.head()
+
+df1['Ethnicity'].value_counts()
+df1['Age_Years'].max()
+df1.drop(df1[df1["Age_Years"]==383].index, inplace=True)
+df1.shape
+#The Age_Years column had an error with 383 years. The corresponding row has been dropped to minimise the error
+
+#Exploratory Data Analysis
+from skimpy import skim
+skim(df1)
+
+#Count Plot to Determine the number of males and females in the data
+sns.set(style = "whitegrid")
+total = float(len(df1))
+ax = sns.countplot(x="Sex", data=df1, palette="muted")
+
+for z in ax.patches:
+    height = z.get_height()
+    ax.text(z.get_x()+z.get_width()/2., height + 3, "{:1.0f}".format(height, ha = "center"))
+plt.show()
+
+#Bar plot to visualise among males and females who were mostly affected by ASD
+sns.catplot(x="Sex", hue="ASD_traits", data=df1, kind = "count")
+sns.catplot(x="Jaundice", hue="ASD_traits", data=df1, kind = "count")
+
+#Count plot to determine the number of positive and negative ASD Traits
+sns.set(style = "whitegrid")
+total = float(len(df1))
+ax = sns.countplot(x="ASD_traits", data=df1, palette="muted")
+
+for z in ax.patches:
+    height = z.get_height()
+    ax.text(z.get_x()+z.get_width()/2., height + 3, "{:1.0f}".format(height, ha = "center"))
+plt.show()
+
+sns.countplot(x="Ethnicity", hue= "Sex", data = df1)
+plt.xticks(rotation = 75)
+
+#Label Encoding
+from sklearn.preprocessing import LabelEncoder
+encoder = LabelEncoder()
+df1["Sex"]=encoder.fit_transform(df1["Sex"])
+df1["ASD_traits"]= encoder.fit_transform(df1["ASD_traits"])
+df1["Jaundice"]=encoder.fit_transform(df1["Jaundice"])
+df1["Family_mem_with_ASD"]=encoder.fit_transform(df1["Family_mem_with_ASD"])
+df1.head()
+
+df1.drop(['Who_completed_the_test', 'Ethnicity'], axis = 1, inplace=True)
+df1.isnull().sum()
+df1.describe()
+df1.info()
+df1.quantile([.25, .5, .75], axis=0)
+
+#Identifying Outliers in Age_Years Column
+Q1_Age, Q3_Age = df1["Age_Years"].quantile([0.25,0.75])
+print('Q1_Age 25 percentile of the given data is,', Q1_Age)
+print('Q3_Age 75 percentile of the given data is,', Q3_Age)
+IQR_Age = Q3_Age - Q1_Age
+print('Interquartile range for Age is Q3-Q1 =', IQR_Age)
+
+#Upper and Lower Limits
+low_lim_age = Q1_Age - 1.5 * IQR_Age
+upp_lim_age = Q3_Age + 1.5 * IQR_Age
+print('low_lim_age is:', low_lim_age)
+print('Upp_lim_age is:', upp_lim_age)
+
+Outlier_Age = []
+for x in df1["Age_Years"]:
+    if ((x>upp_lim_age) or (x<low_lim_age)):
+        Outlier_Age.append(x)
+print("Outlier_Age in the dataset is:", Outlier_Age)
+
+#Histogram for Distribution of Ages
+%matplotlib inline
+plt.figure(figsize=(10,5))
+plt.hist(data=df1, x="Age_Years", bins = 7, edgecolor='black')
+plt.title("Total No.of Persons of different Age groups")
+plt.grid(False)
+plt.xlabel("age")
+plt.ylabel("No.Of Persons")
+
+#Correlation Matrix
+plt.figure(figsize=(10,8))
+sns.heatmap(df1.corr(), annot=True, cmap='YlGnBu')
+plt.title("correlation of features")
+plt.show()
+
+#Model Building
+features = df1.drop("ASD_traits", axis=1)
+target = df1["ASD_traits"]
+
+imputer = SimpleImputer(strategy="most_frequent")  
+target_imputed = imputer.fit_transform(target.values.reshape(-1, 1))
+target = pd.Series(target_imputed[:, 0])
+
+scaler = StandardScaler()
+features_scaled = scaler.fit_transform(features)
+
+S_K_F = StratifiedKFold(n_splits=10, shuffle=True)
+
+models = {
+    "Logistic Regression": LogisticRegression(solver="liblinear"),
+    "SVM": SVC(kernel="rbf"),
+    "KNN": KNeighborsClassifier(),
+    "Decision Tree": DecisionTreeClassifier(),
+    "Random Forest": RandomForestClassifier()
+}
+
+parameter_grid = {
+    "Logistic Regression": {"C": [0.01, 0.1, 1, 10]},
+    "SVM": {"C": [0.01, 0.1, 1]},
+    "KNN": {"n_neighbors": range(1, 11), "p": [1, 2]},
+    "Decision Tree": {"max_depth": range(1,11)},
+    "Random Forest": {"n_estimators": range(10, 101, 10), "max_depth": range(1,11)}
+}
+
+output_data = []
+
+for i, j in S_K_F.split(features_scaled, target):
+    X_train, X_test = features_scaled[i], features_scaled[j]
+    y_train, y_test = target[i], target[j]
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=1001)
+
+    for key, value in models.items():
+        grid_search = GridSearchCV(value, parameter_grid[key], scoring="accuracy", cv=5)
+        grid_search.fit(X_train, y_train)
+        best_model = grid_search.best_estimator_
+
+        y_pred_val = best_model.predict(X_val)
+        accuracy = accuracy_score(y_val, y_pred_val)
+        precision = precision_score(y_val, y_pred_val)
+        recall = recall_score(y_val, y_pred_val)
+        F1_score = f1_score(y_val, y_pred_val)
+        output_data.append([key, grid_search.best_params_, accuracy, precision, recall, F1_score])
+
+print(tabulate(output_data, headers=["Model", "Best Params", "Accuracy", "Precision", "Recall", "F1-Score"], tablefmt="simple"))
+
+#Model Building For Ensembling Techniques
+models = {
+    "AdaBoost Classifier": AdaBoostClassifier(),
+    "Gradient Boosting" : GradientBoostingClassifier(learning_rate=0.1),
+    "Hist Gradient Boosting" : HistGradientBoostingClassifier()
+}
+
+parameter_grid = {
+    "AdaBoost Classifier": {"n_estimators": range(50, 251, 50)},
+    "Gradient Boosting": {"n_estimators": range(100, 1001, 100)},
+    "Hist Gradient Boosting": {"learning_rate": [0.01, 0.05, 0.1], "max_iter": range(100, 501, 100)}
+}
+
+output_data = []
+
+for i, j in S_K_F.split(features_scaled, target):
+    X_train, X_test = features_scaled[i], features_scaled[j]
+    y_train, y_test = target[i], target[j]
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=1001)
+
+    for key, value in models.items():
+        grid_search = GridSearchCV(value, parameter_grid[key], scoring="accuracy", cv=3)
+        grid_search.fit(X_train, y_train)
+        best_model = grid_search.best_estimator_
+
+        y_pred_val = best_model.predict(X_val)
+        accuracy = accuracy_score(y_val, y_pred_val)
+        precision = precision_score(y_val, y_pred_val)
+        recall = recall_score(y_val, y_pred_val)
+        F1_score = f1_score(y_val, y_pred_val) 
+        output_data.append([key, grid_search.best_params_, accuracy, precision, recall, F1_score])
+
+print(tabulate(output_data, headers=["Model", "Best Params", "Accuracy", "Precision", "Recall", "F1-Score"], tablefmt="simple"))
+
+#Separate Model BUilding for each model used in this study
+#Random Forest Model
+X = df1.drop("ASD_traits", axis = 1)
+y = df1["ASD_traits"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state=1001)
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+param_grid ={
+    'n_estimators':range(50, 101, 10),
+    'max_depth':range(1,11)
+}
+
+clf_RF = RandomForestClassifier()
+grid_search = GridSearchCV(estimator=clf_RF, param_grid = param_grid, cv=5, scoring="accuracy")
+grid_search.fit(X_train_scaled, y_train)
+best_model = grid_search.best_estimator_
+best_params = grid_search.best_params_
+y_pred_RF = best_model.predict(X_test_scaled)
+accuracy_RF = accuracy_score(y_test, y_pred_RF)
+print(f"Accuracy of RF: {accuracy_RF}")
+print(f"Best Parameters: {best_params}")
+print(classification_report(y_test, y_pred_RF))
+
+#Confusion Matrix
+ConfusionMatrixDisplay.from_predictions(y_test, y_pred_RF)
+plt.title("Confusion Matrix for Random Forest Classifier")
+plt.grid(False)
+plt.show()
+
+#ROC Curve
+y_proba_RF = best_model.predict_proba(X_test_scaled)[:, 1]
+fpr, tpr, thresholds = roc_curve(y_test, y_proba_RF)
+ROC_AUC = roc_auc_score(y_test, y_proba_RF)
+plt.plot(fpr, tpr, label=f'(AUC={ROC_AUC:.2f})')
+plt.plot([0, 1], [0, 1], '--', color='grey')
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve for Random Forest Model")
+print(f"Random Forest AUC: {ROC_AUC}")
+plt.legend()
+plt.show()
+
+#Precision-Recall Curve
+precision, recall, thresholds = precision_recall_curve(y_test, y_proba_RF)
+average_precision = average_precision_score(y_test, y_proba_RF)
+plt.plot(recall, precision)
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.title("Precision Recall Curve of Random Forest Classifier")
+print(f"Average Precision Score is: {average_precision}")
+plt.show()
+
+#KNN classifier
+param_grid ={
+    'n_neighbors':range(1,11),
+    'p':[1, 2]
+}
+
+clf_KNN = KNeighborsClassifier()
+
+grid_search = GridSearchCV(estimator=clf_KNN, param_grid = param_grid, cv=5, scoring="accuracy")
+grid_search.fit(X_train, y_train)
+
+best_model = grid_search.best_estimator_
+best_params = grid_search.best_params_
+y_pred_KNN = best_model.predict(X_test)
+accuracy_KNN = accuracy_score(y_test, y_pred_KNN)
+print(f"Accuracy of KNN: {accuracy_KNN}")
+print(f"Best Parameters: {best_params}")
+print(classification_report(y_test, y_pred_KNN))
+
+ConfusionMatrixDisplay.from_predictions(y_test, y_pred_KNN)
+plt.title("Confusion Matrix for KNN Model")
+plt.grid(False)
+plt.show()
+
+y_proba_KNN = best_model.predict_proba(X_test_scaled)[:, 1]
+fpr, tpr, thresholds = roc_curve(y_test, y_proba_KNN)
+ROC_AUC = roc_auc_score(y_test, y_proba_KNN)
+plt.plot(fpr, tpr, label=f'(AUC={ROC_AUC:.2f})')
+plt.plot([0, 1], [0, 1], 'r--')
+plt.title("ROC Curve of KNN Classifier")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+print(f"KNN classifier AUC: {ROC_AUC}")
+plt.legend()
+plt.show()
+
+precision, recall, thresholds = precision_recall_curve(y_test, y_proba_KNN)
+average_precision = average_precision_score(y_test, y_proba_KNN)
+plt.plot(recall, precision)
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.title("Precision Recall Curve of KNN classifier")
+print(f"Average Precision Score is: {average_precision}")
+plt.show()
+
+#Decision Tree Classifier
+param_grid ={
+    'max_depth':range(1,11)
+}
+clf_DT = DecisionTreeClassifier()
+grid_search = GridSearchCV(estimator=clf_DT, param_grid = param_grid, cv=5, scoring="accuracy")
+grid_search.fit(X_train_scaled, y_train)
+
+best_model = grid_search.best_estimator_
+best_params = grid_search.best_params_
+y_pred_DT = best_model.predict(X_test_scaled)
+accuracy_DT = accuracy_score(y_test, y_pred_DT)
+print(f"Accuracy of DT: {accuracy_DT}")
+print(f"Best Parameters: {best_params}")
+clf_report = classification_report(y_test,y_pred_DT)
+print("classification Report:\n", clf_report)
+
+ConfusionMatrixDisplay.from_predictions(y_test, y_pred_DT)
+plt.title("Confusion Matrix for Decision Tree Model")
+plt.grid(False)
+plt.show()
+
+y_proba_DT = best_model.predict_proba(X_test_scaled)[:, 1]
+fpr, tpr, thresholds = roc_curve(y_test, y_proba_DT)
+ROC_AUC = roc_auc_score(y_test, y_proba_DT)
+plt.plot(fpr, tpr, label=f'(AUC={ROC_AUC:.2f})')
+plt.plot([0, 1], [0, 1], 'r--')
+plt.title("ROC Curve of Decision Tree Classifier")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+print(f"Decision Tree Classifier AUC: {ROC_AUC}")
+plt.legend()
+plt.show()
+
+precision, recall, thresholds = precision_recall_curve(y_test, y_proba_DT)
+average_precision = average_precision_score(y_test, y_proba_DT)
+plt.plot(recall, precision)
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.title("Precision Recall Curve of Decision Tree classifier")
+print(f"Average Precision Score is: {average_precision}")
+plt.show()
+
+#Plotting the decision tree with three branches
+param_grid ={
+    'max_depth':[3]
+}
+
+clf_DT = DecisionTreeClassifier()
+grid_search = GridSearchCV(estimator=clf_DT, param_grid = param_grid)
+grid_search.fit(X_train_scaled, y_train)
+best_model = grid_search.best_estimator_
+
+from sklearn.tree import plot_tree
+plt.figure(figsize=(12, 6))  
+plot_tree(best_model, filled=True, rounded=True, class_names=["non-ASD", "ASD"])
+plt.title("Decision Tree for ASD Classification")
+plt.show()
+
+#SVM Classifier
+param_grid ={
+   "C":[0.01, 0.1, 1],
+    "kernel":["linear", "rbf"]
+}
+
+clf_SVM = SVC(probability=True)
+grid_search = GridSearchCV(estimator=clf_SVM, param_grid = param_grid, cv=5, scoring="accuracy")
+grid_search.fit(X_train_scaled, y_train)
+
+best_model = grid_search.best_estimator_
+best_params = grid_search.best_params_
+y_pred_SVM = best_model.predict(X_test_scaled)
+accuracy_SVM = accuracy_score(y_test, y_pred_SVM)
+print(f"Accuracy of SVM: {accuracy_SVM}")
+print(f"Best Parameters: {best_params}")
+print(classification_report(y_test, y_pred_SVM))
+
+ConfusionMatrixDisplay.from_predictions(y_test, y_pred_SVM)
+plt.title("Confusion Matrix for SVM Model")
+plt.grid(False)
+plt.show()
+
+y_proba_SVM = best_model.predict_proba(X_test_scaled)[:, 1]
+fpr, tpr, thresholds = roc_curve(y_test, y_proba_SVM)
+ROC_AUC = roc_auc_score(y_test, y_proba_SVM)
+plt.plot(fpr, tpr, label=f'(AUC={ROC_AUC:.2f})')
+plt.plot([0, 1], [0, 1], 'r--')
+plt.title("ROC Curve of SVM Classifier")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+print(f"SVC AUC: {ROC_AUC}")
+plt.legend()
+plt.show()
+
+precision, recall, thresholds = precision_recall_curve(y_test, y_proba_SVM)
+average_precision = average_precision_score(y_test, y_proba_SVM)
+plt.plot(recall, precision)
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.title("Precision Recall Curve of SVM classifier")
+print(f"Average Precision Score is: {average_precision}")
+plt.show()
+
+#Logistic Regression
+param_grid ={
+    'C':[0.001, 0.01, 0.1, 1],
+    'solver':["liblinear","lbfgs"]
+}
+
+clf_LR = LogisticRegression()
+grid_search = GridSearchCV(estimator=clf_LR, param_grid = param_grid, cv=5, scoring="accuracy")
+grid_search.fit(X_train_scaled, y_train)
+best_model = grid_search.best_estimator_
+best_params = grid_search.best_params_
+
+y_pred_LR = best_model.predict(X_test_scaled)
+accuracy_LR = accuracy_score(y_test, y_pred_LR)
+print(f"Accuracy of LR: {accuracy_LR}")
+print(f"Best Parameters: {best_params}")
+print(classification_report(y_test, y_pred_LR))
+
+ConfusionMatrixDisplay.from_predictions(y_test, y_pred_LR)
+plt.title("Confusion Matrix for Logistic Regression Model")
+plt.grid(False)
+plt.show()
+
+y_proba_LR = best_model.predict_proba(X_test_scaled)[:, 1]
+fpr, tpr, thresholds = roc_curve(y_test, y_proba_LR)
+ROC_AUC = roc_auc_score(y_test, y_proba_LR)
+plt.plot(fpr, tpr, label=f'(AUC={ROC_AUC:.2f})')
+plt.plot([0, 1], [0, 1], 'r--')
+plt.title("ROC Curve of Logistic regression")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+print(f"Logistic Regression AUC: {ROC_AUC}")
+plt.legend()
+plt.show()
+
+precision, recall, thresholds = precision_recall_curve(y_test, y_proba_LR)
+average_precision = average_precision_score(y_test, y_proba_LR)
+plt.plot(recall, precision)
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.title("Precision Recall Curve of Logistic Regression")
+print(f"Average Precision Score is: {average_precision}")
+plt.show()
+
+#Comparing the accuracies
+model_names = ["Random Forest", "KNN", "Decision Tree", "SVM", "Logistic Regression"]
+accuracies = [accuracy_RF, accuracy_KNN, accuracy_DT, accuracy_SVM, accuracy_LR]
+plt.figure(figsize=(10,6))
+plt.bar(model_names, accuracies, color=['limegreen', 'skyblue', 'coral', 'royalblue', 'red'])
+plt.xlabel('Model')
+plt.ylabel('Accuracy Score')
+plt.title('Models Accuracy Comparison')
+plt.xticks(rotation=45, ha='right')
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+#AdaBoost Classifier
+clf_ABC = AdaBoostClassifier(n_estimators=500, learning_rate=1)
+
+clf_ABC.fit(X_train_scaled, y_train)
+y_pred_ABC = clf_ABC.predict(X_test_scaled)
+accuracy = accuracy_score(y_test, y_pred_ABC)
+print(f"Accuraccy of ABC:{accuracy}")
+print(classification_report(y_test,y_pred_ABC))
+
+ConfusionMatrixDisplay.from_predictions(y_test, y_pred_ABC)
+plt.title("Confusion Matrix for AdaBoostClassifier")
+plt.grid(False)
+plt.show()
+
+y_proba_ABC = best_model.predict_proba(X_test_scaled)[:, 1]
+fpr, tpr, thresholds = roc_curve(y_test, y_proba_ABC)
+ROC_AUC = roc_auc_score(y_test, y_proba_ABC)
+plt.plot(fpr, tpr, label=f'(AUC={ROC_AUC:.2f})')
+plt.plot([0, 1], [0, 1], 'r--')
+plt.title("ROC Curve of AdaBoost Classifier")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+print(f"AdaBoost Classifier AUC: {ROC_AUC}")
+plt.legend()
+plt.show()
+
+precision, recall, thresholds = precision_recall_curve(y_test, y_proba_ABC)
+average_precision = average_precision_score(y_test, y_proba_ABC)
+plt.plot(recall, precision)
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.title("Precision Recall Curve of AdaBoost Classifier")
+print(f"Average Precision Score is: {average_precision}")
+plt.show()
+
+#GradientBoosting Classifier
+clf_GBC = GradientBoostingClassifier(n_estimators=500)
+
+clf_GBC.fit(X_train_scaled, y_train)
+y_pred_GBC = clf_GBC.predict(X_test_scaled)
+accuracy = accuracy_score(y_test, y_pred_GBC)
+print(f"Accuraccy of GBC:{accuracy}")
+print(classification_report(y_test,y_pred_GBC))
+
+ConfusionMatrixDisplay.from_predictions(y_test, y_pred_GBC)
+plt.title("Confusion Matrix for Gradient Boosting Classifier")
+plt.grid(False)
+plt.show()
+
+y_proba_GBC = clf_GBC.predict_proba(X_test_scaled)[:, 1]
+fpr, tpr, thresholds = roc_curve(y_test, y_proba_GBC)
+ROC_AUC = roc_auc_score(y_test, y_proba_GBC)
+plt.plot(fpr, tpr, label=f'(AUC={ROC_AUC:.2f})')
+plt.plot([0, 1], [0, 1], 'r--')
+plt.title("ROC Curve of Gradient Boosting Classifier")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+print(f"Gradient Boosting Classifier AUC: {ROC_AUC}")
+plt.legend()
+plt.show()
+
+precision, recall, thresholds = precision_recall_curve(y_test, y_proba_GBC)
+average_precision = average_precision_score(y_test, y_proba_GBC)
+plt.plot(recall, precision)
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.title("Precision Recall Curve of Gradient Boosting Classifier")
+print(f"Average Precision Score is: {average_precision}")
+plt.show()
+
+#HistGradientBoosting Classifier
+clf_HGBC = HistGradientBoostingClassifier(learning_rate =0.05, max_iter = 100)
+
+clf_HGBC.fit(X_train_scaled, y_train)
+y_pred_HGBC = clf_HGBC.predict(X_test_scaled)
+accuracy = accuracy_score(y_test, y_pred_HGBC)
+print(f"Accuracy of HGBC:{accuracy}")
+print(classification_report(y_test,y_pred_HGBC))
+
+ConfusionMatrixDisplay.from_predictions(y_test, y_pred_HGBC)
+plt.title("Confusion Matrix for Hist Gradient Boosting Classifier")
+plt.grid(False)
+plt.show()
+
+y_proba_HGBC = clf_HGBC.predict_proba(X_test_scaled)[:, 1]
+fpr, tpr, thresholds = roc_curve(y_test, y_proba_HGBC)
+ROC_AUC = roc_auc_score(y_test, y_proba_HGBC)
+plt.plot(fpr, tpr, label=f'(AUC={ROC_AUC:.2f})')
+plt.plot([0, 1], [0, 1], 'r--')
+plt.title("ROC Curve of Hist Gradient Boosting Classifier")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+print(f"Hist Gradient Boosting Classifier AUC: {ROC_AUC}")
+plt.legend()
+plt.show()
+
+precision, recall, thresholds = precision_recall_curve(y_test, y_proba_HGBC)
+average_precision = average_precision_score(y_test, y_proba_HGBC)
+plt.plot(recall, precision)
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.title("Precision Recall Curve of Hist Gradient Boosting Classifier")
+print(f"Average Precision Score is: {average_precision}")
+plt.show()
+
+#Plotting the confusion matrices as subplots
+fig, axes = plt.subplots(nrows=4, ncols=2, figsize=(12, 16))
+
+classifiers = ["RandomForestClassifier", "SVM", "HistGradientBoostingClassifier", "KNN", 
+               "DecisionTreeClassifier", "LogisticRegression", "GradientBoostingClassifier", "AdaBoostClassifier"]
+y_pred_classifiers = [y_pred_RF, y_pred_SVM, y_pred_HGBC, y_pred_KNN, y_pred_DT, y_pred_LR, y_pred_GBC, y_pred_ABC]
+
+for i, (model, y_pred) in enumerate(zip(classifiers, y_pred_classifiers)):
+    ax = axes.flat[i]
+    ConfusionMatrixDisplay.from_predictions(y_test, y_pred, ax=ax)
+    ax.set_title(f"Confusion Matrix of {model}")
+    ax.grid(False)    
+plt.tight_layout()
+plt.show()
+
+#Comparing the performance of Models using ROC Curves
+df2 = pd.DataFrame({"Random Forest":y_proba_RF, "SVC":y_proba_SVM,"KNN":y_proba_KNN, 
+                    "Decision Tree":y_proba_DT, "Logistic Regression":y_proba_LR, "AdaBoost":y_proba_ABC,
+                   "Gradient Boosting":y_proba_GBC, "HistGradient Boosting":y_proba_HGBC})
+
+plt.figure(figsize=(10,6))
+for i in ['Random Forest','SVC', 'Decision Tree', 'KNN', 'Logistic Regression', 
+          'AdaBoost', 'Gradient Boosting', 'HistGradient Boosting']:
+    fpr, tpr, thresholds = roc_curve(y_test, df2[i])
+    ROC_AUC = roc_auc_score(y_test, df2[i])
+    plt.plot(fpr, tpr, label=f'{i} (AUC={ROC_AUC:.2f})')
+    
+plt.plot([0, 1], [0, 1], 'b--', label='Linear Increase')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Comparison of model performance using ROC curves')
+plt.legend()
+plt.show()
+
+Comparing the performance of MOdel using Precision-Recall Curve
+no_skill = len(y_test[y_test==1])/len(y_test)
+
+plt.figure(figsize=(10,6))
+for j in ['Random Forest','SVC', 'Decision Tree', 'KNN', 'Logistic Regression', 
+          'AdaBoost', 'Gradient Boosting', 'HistGradient Boosting']:
+    precision, recall, thresholds = precision_recall_curve(y_test, df2[j])
+    average_precision = average_precision_score(y_test, df2[j])
+    plt.plot(recall, precision, label=f'{j} (AP={average_precision:.2f})')
+plt.plot([0, 1], [no_skill, no_skill], linestyle='--', label='Baseline')
+plt.xlabel('Recall')
+plt.ylabel('Precision')
+plt.title('Comparison of model performance using Precision Recall curves')
+plt.legend()
+plt.show()
+
+#Saving the model to a pickle file
+import pickle
+with open("Predicting_Autism.pickle", 'wb') as f:
+    pickle.dump(clf_HGBC, f)
+	
+#Loading the model using pickle file
+with open("Predicting_Autism.pickle", 'rb') as f:
+    loaded_clf= pickle.load(f)
+    
+y_pred = loaded_clf.predict(X_test_scaled)
+
+accuracy = accuracy_score(y_test, y_pred)
+clf_report = classification_report(y_test,y_pred)
+print("Accuracy", accuracy)
+print("classification Report:\n", clf_report)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
