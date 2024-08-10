@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# coding: utf-8
 
 # In[1]:
 
@@ -108,7 +110,7 @@ from skimpy import skim
 skim(df1)
 
 
-# **Countplot to determine number of males and females in the data**
+# **Countplot to determine the number of males and females in the data**
 
 # In[13]:
 
@@ -355,8 +357,8 @@ X_val.shape, X_test.shape, X_train.shape
 
 models = {
     "AdaBoost Classifier": AdaBoostClassifier(),
-    "Gradient Boosting" : GradientBoostingClassifier(learning_rate=0.1),
-    "Hist Gradient Boosting" : HistGradientBoostingClassifier()
+    "Gradient Boosting": GradientBoostingClassifier(learning_rate=0.1),
+    "Hist Gradient Boosting": HistGradientBoostingClassifier()
 }
 
 parameter_grid = {
@@ -390,7 +392,7 @@ print(tabulate(output_data, headers=["Model", "Best Params", "Accuracy", "Precis
 
 # **Random Forest Classifier**
 
-# In[82]:
+# In[35]:
 
 
 X = df1.drop("ASD_traits", axis = 1)
@@ -420,7 +422,7 @@ print(classification_report(y_test, y_pred_RF))
 
 # **Confusion Matrix for a Random Forest Classifier**
 
-# In[83]:
+# In[36]:
 
 
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred_RF)
@@ -431,13 +433,13 @@ plt.show()
 
 # **ROC Curve for a Random Forest Classifier**
 
-# In[84]:
+# In[37]:
 
 
 y_proba_RF = best_model.predict_proba(X_test_scaled)[:, 1]
 
 
-# In[85]:
+# In[38]:
 
 
 fpr, tpr, thresholds = roc_curve(y_test, y_proba_RF)
@@ -455,7 +457,7 @@ plt.show()
 
 # **Precision-Recall Curve for a Random Forest Classifier**
 
-# In[86]:
+# In[39]:
 
 
 precision, recall, thresholds = precision_recall_curve(y_test, y_proba_RF)
@@ -785,7 +787,7 @@ print(f"Average Precision Score is: {average_precision}")
 plt.show()
 
 
-# In[87]:
+# In[61]:
 
 
 model_names = ["Random Forest", "KNN", "Decision Tree", "SVM", "Logistic Regression"]
@@ -978,7 +980,7 @@ plt.show()
 
 # **Precision-Recall Curve for Hist Gradient Boosting Classifier**
 
-# In[94]:
+# In[76]:
 
 
 precision, recall, thresholds = precision_recall_curve(y_test, y_proba_HGBC)
@@ -993,7 +995,7 @@ plt.show()
 
 # **Plotting the confusion matrices as Subplots**
 
-# In[88]:
+# In[77]:
 
 
 fig, axes = plt.subplots(nrows=4, ncols=2, figsize=(12, 16))
@@ -1013,7 +1015,7 @@ plt.show()
 
 # **Comparision of Model Performance using ROC Curves**
 
-# In[89]:
+# In[78]:
 
 
 df2 = pd.DataFrame({"Random Forest":y_proba_RF, "SVC":y_proba_SVM,"KNN":y_proba_KNN, 
@@ -1037,7 +1039,7 @@ plt.show()
 
 # **Comparison Of Model Performance Using Precision-Recall Curves**
 
-# In[90]:
+# In[79]:
 
 
 no_skill = len(y_test[y_test==1])/len(y_test)
