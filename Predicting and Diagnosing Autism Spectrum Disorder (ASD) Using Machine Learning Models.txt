@@ -268,7 +268,7 @@ df1["Age_Years"].max()
 # In[30]:
 
 
-get_ipython().run_line_magic('matplotlib', 'inline')
+%matplotlib inline
 plt.figure(figsize=(10,6))
 plt.hist(data=df1, x="Age_Years", bins = 7, edgecolor='black')
 plt.title("Total No.of Persons of different Age groups")
