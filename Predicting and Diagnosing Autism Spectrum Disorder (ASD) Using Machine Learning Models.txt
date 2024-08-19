@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# coding: utf-8
+
 
 # In[1]:
 
@@ -214,46 +213,14 @@ df1.info()
 df1.quantile([.25, .5, .75], axis=0)
 
 
-# **Identifying the outliers in Age_Years column**
-
 # In[25]:
-
-
-#Identifying outliers using boxplot
-
-sns.boxplot(df1["Age_Years"])
-
-
-# In[26]:
-
-
-Q1_Age, Q3_Age = df1["Age_Years"].quantile([0.25,0.75])
-print('Q1_Age 25 percentile of the given data is,', Q1_Age)
-print('Q3_Age 75 percentile of the given data is,', Q3_Age)
-IQR_Age = Q3_Age - Q1_Age
-print('Interquartile range for Age is Q3-Q1 =', IQR_Age)
-
-#Upper and Lower Limits
-low_lim_age = Q1_Age - 1.5 * IQR_Age
-upp_lim_age = Q3_Age + 1.5 * IQR_Age
-print('low_lim_age is:', low_lim_age)
-print('Upp_lim_age is:', upp_lim_age)
-
-Outlier_Age = []
-for x in df1["Age_Years"]:
-    if ((x>upp_lim_age) or (x<low_lim_age)):
-        Outlier_Age.append(x)
-print("Outlier_Age in the dataset is:", Outlier_Age)
-
-
-# In[27]:
 
 
 df1.Age_Years.median()
 df1.Age_Years.mean()
 
 
-# In[28]:
+# In[26]:
 
 
 df1["Age_Years"].max()
@@ -261,7 +228,7 @@ df1["Age_Years"].max()
 
 # **Histogram for Distribution of Ages**
 
-# In[29]:
+# In[27]:
 
 
 %matplotlib inline
@@ -275,7 +242,7 @@ plt.ylabel("No.Of Persons")
 
 # **Correlation Matrix**
 
-# In[30]:
+# In[28]:
 
 
 plt.figure(figsize=(10,8))
@@ -286,7 +253,7 @@ plt.show()
 
 # **Model Building**
 
-# In[31]:
+# In[29]:
 
 
 features = df1.drop("ASD_traits", axis=1)
@@ -340,7 +307,7 @@ for i, j in S_K_F.split(features_scaled, target):
 print(tabulate(output_data, headers=["Model", "Best Params", "Accuracy", "Precision", "Recall", "F1-Score"], tablefmt="simple"))
 
 
-# In[32]:
+# In[30]:
 
 
 X_val.shape, X_test.shape, X_train.shape
@@ -348,7 +315,7 @@ X_val.shape, X_test.shape, X_train.shape
 
 # **Ensembling Techniques For Predicting ASD**
 
-# In[33]:
+# In[31]:
 
 
 models = {
@@ -388,7 +355,7 @@ print(tabulate(output_data, headers=["Model", "Best Params", "Accuracy", "Precis
 
 # **Random Forest Classifier**
 
-# In[34]:
+# In[32]:
 
 
 X = df1.drop("ASD_traits", axis = 1)
@@ -418,7 +385,7 @@ print(classification_report(y_test, y_pred_RF))
 
 # **Confusion Matrix for a Random Forest Classifier**
 
-# In[35]:
+# In[33]:
 
 
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred_RF)
@@ -429,13 +396,13 @@ plt.show()
 
 # **ROC Curve for a Random Forest Classifier**
 
-# In[36]:
+# In[34]:
 
 
 y_proba_RF = best_model.predict_proba(X_test_scaled)[:, 1]
 
 
-# In[37]:
+# In[35]:
 
 
 fpr, tpr, thresholds = roc_curve(y_test, y_proba_RF)
@@ -453,7 +420,7 @@ plt.show()
 
 # **Precision-Recall Curve for a Random Forest Classifier**
 
-# In[38]:
+# In[36]:
 
 
 precision, recall, thresholds = precision_recall_curve(y_test, y_proba_RF)
@@ -468,7 +435,7 @@ plt.show()
 
 # **KNN Classifier**
 
-# In[39]:
+# In[37]:
 
 
 param_grid ={
@@ -494,7 +461,7 @@ print(classification_report(y_test, y_pred_KNN))
 
 # **Confusion Matrix for a KNN Classifier**
 
-# In[40]:
+# In[38]:
 
 
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred_KNN)
@@ -505,13 +472,13 @@ plt.show()
 
 # **ROC Curve for a KNN classifier**
 
-# In[41]:
+# In[39]:
 
 
 y_proba_KNN = best_model.predict_proba(X_test_scaled)[:, 1]
 
 
-# In[42]:
+# In[40]:
 
 
 fpr, tpr, thresholds = roc_curve(y_test, y_proba_KNN)
@@ -528,7 +495,7 @@ plt.show()
 
 # **Precision-Recall Curve for a KNN classifier**
 
-# In[43]:
+# In[41]:
 
 
 precision, recall, thresholds = precision_recall_curve(y_test, y_proba_KNN)
@@ -543,7 +510,7 @@ plt.show()
 
 # **Decision Tree Classifier**
 
-# In[44]:
+# In[42]:
 
 
 param_grid ={
@@ -562,13 +529,13 @@ y_pred_DT = best_model.predict(X_test_scaled)
 accuracy_DT = accuracy_score(y_test, y_pred_DT)
 print(f"Accuracy of DT: {accuracy_DT}")
 print(f"Best Parameters: {best_params}")
-clf_report = classification_report(y_test,y_pred_DT)
+clf_report = classification_report(y_test, y_pred_DT)
 print("classification Report:\n", clf_report)
 
 
 # **Confusion Matrix for a Decision Tree Classifier**
 
-# In[45]:
+# In[43]:
 
 
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred_DT)
@@ -579,13 +546,13 @@ plt.show()
 
 # **ROC Curve for a Decision Tree Classifier**
 
-# In[46]:
+# In[44]:
 
 
 y_proba_DT = best_model.predict_proba(X_test_scaled)[:, 1]
 
 
-# In[47]:
+# In[45]:
 
 
 fpr, tpr, thresholds = roc_curve(y_test, y_proba_DT)
@@ -602,7 +569,7 @@ plt.show()
 
 # **Precision-Recall Curve for a Decision Tree Classifier**
 
-# In[48]:
+# In[46]:
 
 
 precision, recall, thresholds = precision_recall_curve(y_test, y_proba_DT)
@@ -615,7 +582,7 @@ print(f"Average Precision Score is: {average_precision}")
 plt.show()
 
 
-# In[49]:
+# In[47]:
 
 
 param_grid ={
@@ -637,7 +604,7 @@ plt.show()
 
 # **SVM Classifier**
 
-# In[50]:
+# In[48]:
 
 
 param_grid ={
@@ -662,7 +629,7 @@ print(classification_report(y_test, y_pred_SVM))
 
 # **Confusion Matrix for a Support Vector Classifier**
 
-# In[51]:
+# In[49]:
 
 
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred_SVM)
@@ -673,13 +640,13 @@ plt.show()
 
 # **ROC Curve for a Support Vector Classifier**
 
-# In[52]:
+# In[50]:
 
 
 y_proba_SVM = best_model.predict_proba(X_test_scaled)[:, 1]
 
 
-# In[53]:
+# In[51]:
 
 
 fpr, tpr, thresholds = roc_curve(y_test, y_proba_SVM)
@@ -696,7 +663,7 @@ plt.show()
 
 # **Precision-Recall Curve for a Support Vector Classifier**
 
-# In[54]:
+# In[52]:
 
 
 precision, recall, thresholds = precision_recall_curve(y_test, y_proba_SVM)
@@ -711,7 +678,7 @@ plt.show()
 
 # **Logistic Regression**
 
-# In[55]:
+# In[53]:
 
 
 param_grid ={
@@ -736,7 +703,7 @@ print(classification_report(y_test, y_pred_LR))
 
 # **Confusion Matrix for Logistic Regression Model**
 
-# In[56]:
+# In[54]:
 
 
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred_LR)
@@ -747,13 +714,13 @@ plt.show()
 
 # **ROC Curve for a Logistic Regression Model**
 
-# In[57]:
+# In[55]:
 
 
 y_proba_LR = best_model.predict_proba(X_test_scaled)[:, 1]
 
 
-# In[58]:
+# In[56]:
 
 
 fpr, tpr, thresholds = roc_curve(y_test, y_proba_LR)
@@ -770,7 +737,7 @@ plt.show()
 
 # **Precision-Recall Curve for a Logistic Regression Model**
 
-# In[59]:
+# In[57]:
 
 
 precision, recall, thresholds = precision_recall_curve(y_test, y_proba_LR)
@@ -783,7 +750,7 @@ print(f"Average Precision Score is: {average_precision}")
 plt.show()
 
 
-# In[60]:
+# In[58]:
 
 
 model_names = ["Random Forest", "KNN", "Decision Tree", "SVM", "Logistic Regression"]
@@ -802,7 +769,7 @@ plt.show()
 
 # **AdaBoost Classifier**
 
-# In[61]:
+# In[59]:
 
 
 clf_ABC = AdaBoostClassifier(n_estimators=500, learning_rate=1)
@@ -813,12 +780,12 @@ y_pred_ABC = clf_ABC.predict(X_test_scaled)
 
 accuracy = accuracy_score(y_test, y_pred_ABC)
 print(f"Accuraccy of ABC:{accuracy}")
-print(classification_report(y_test,y_pred_ABC))
+print(classification_report(y_test, y_pred_ABC))
 
 
 # **Confusion Matrix for AdaBoost Classifier**
 
-# In[62]:
+# In[60]:
 
 
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred_ABC)
@@ -829,13 +796,13 @@ plt.show()
 
 # **ROC Curve for AdaBoost Classifier**
 
-# In[63]:
+# In[61]:
 
 
 y_proba_ABC = best_model.predict_proba(X_test_scaled)[:, 1]
 
 
-# In[64]:
+# In[62]:
 
 
 fpr, tpr, thresholds = roc_curve(y_test, y_proba_ABC)
@@ -852,7 +819,7 @@ plt.show()
 
 # **Precision-Recall Curve for AdaBoost Classifier**
 
-# In[65]:
+# In[63]:
 
 
 precision, recall, thresholds = precision_recall_curve(y_test, y_proba_ABC)
@@ -867,7 +834,7 @@ plt.show()
 
 # **Gradient Boosting Classifier**
 
-# In[66]:
+# In[64]:
 
 
 clf_GBC = GradientBoostingClassifier(n_estimators=500)
@@ -878,12 +845,12 @@ y_pred_GBC = clf_GBC.predict(X_test_scaled)
 
 accuracy = accuracy_score(y_test, y_pred_GBC)
 print(f"Accuraccy of GBC:{accuracy}")
-print(classification_report(y_test,y_pred_GBC))
+print(classification_report(y_test, y_pred_GBC))
 
 
 # **Confusion Matrix for Gradient Boosting Classifier**
 
-# In[67]:
+# In[65]:
 
 
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred_GBC)
@@ -894,13 +861,13 @@ plt.show()
 
 # **ROC Curve for Gradient Boosting Classifier**
 
-# In[68]:
+# In[66]:
 
 
 y_proba_GBC = clf_GBC.predict_proba(X_test_scaled)[:, 1]
 
 
-# In[69]:
+# In[67]:
 
 
 fpr, tpr, thresholds = roc_curve(y_test, y_proba_GBC)
@@ -917,7 +884,7 @@ plt.show()
 
 # **Precision-Recall Curve for Gradient Boosting Classifier**
 
-# In[70]:
+# In[68]:
 
 
 precision, recall, thresholds = precision_recall_curve(y_test, y_proba_GBC)
@@ -932,7 +899,7 @@ plt.show()
 
 # **Hist Gradient Boosting Classifier**
 
-# In[71]:
+# In[69]:
 
 
 clf_HGBC = HistGradientBoostingClassifier(learning_rate =0.05, max_iter = 100)
@@ -943,12 +910,12 @@ y_pred_HGBC = clf_HGBC.predict(X_test_scaled)
 
 accuracy = accuracy_score(y_test, y_pred_HGBC)
 print(f"Accuracy of HGBC:{accuracy}")
-print(classification_report(y_test,y_pred_HGBC))
+print(classification_report(y_test, y_pred_HGBC))
 
 
 # **Confusion Matrix for Hist Gradient Boosting Classifier**
 
-# In[72]:
+# In[70]:
 
 
 ConfusionMatrixDisplay.from_predictions(y_test, y_pred_HGBC)
@@ -959,13 +926,13 @@ plt.show()
 
 # **ROC curve for Hist Gradient Boosting Classifier**
 
-# In[73]:
+# In[71]:
 
 
 y_proba_HGBC = clf_HGBC.predict_proba(X_test_scaled)[:, 1]
 
 
-# In[74]:
+# In[72]:
 
 
 fpr, tpr, thresholds = roc_curve(y_test, y_proba_HGBC)
@@ -982,7 +949,7 @@ plt.show()
 
 # **Precision-Recall Curve for Hist Gradient Boosting Classifier**
 
-# In[75]:
+# In[73]:
 
 
 precision, recall, thresholds = precision_recall_curve(y_test, y_proba_HGBC)
@@ -997,7 +964,7 @@ plt.show()
 
 # **Plotting the confusion matrices as Subplots**
 
-# In[76]:
+# In[74]:
 
 
 fig, axes = plt.subplots(nrows=4, ncols=2, figsize=(12, 16))
@@ -1017,7 +984,7 @@ plt.show()
 
 # **Comparision of Model Performance using ROC Curves**
 
-# In[77]:
+# In[75]:
 
 
 df2 = pd.DataFrame({"Random Forest":y_proba_RF, "SVC":y_proba_SVM,"KNN":y_proba_KNN, 
@@ -1041,7 +1008,7 @@ plt.show()
 
 # **Comparison Of Model Performance Using Precision-Recall Curves**
 
-# In[78]:
+# In[76]:
 
 
 no_skill = len(y_test[y_test==1])/len(y_test)
@@ -1062,7 +1029,7 @@ plt.show()
 
 # **Saving the model to a pickle file**
 
-# In[79]:
+# In[77]:
 
 
 import pickle
@@ -1070,7 +1037,7 @@ with open("Predicting_Autism.pickle", 'wb') as f:
     pickle.dump(clf_HGBC, f)
 
 
-# In[80]:
+# In[78]:
 
 
 #Loading the model using pickle file
@@ -1081,7 +1048,7 @@ with open("Predicting_Autism.pickle", 'rb') as f:
 y_pred = loaded_clf.predict(X_test_scaled)
 
 accuracy = accuracy_score(y_test, y_pred)
-clf_report = classification_report(y_test,y_pred)
+clf_report = classification_report(y_test, y_pred)
 print("Accuracy", accuracy)
 print("classification Report:\n", clf_report)
 
